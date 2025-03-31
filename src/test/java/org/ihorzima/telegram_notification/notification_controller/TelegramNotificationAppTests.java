@@ -1,10 +1,10 @@
-package org.example.notification_controller;
+package org.ihorzima.telegram_notification.notification_controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class NotificationControllerApplicationTests {
+class TelegramNotificationAppTests {
 
     @Test
     void contextLoads() {
