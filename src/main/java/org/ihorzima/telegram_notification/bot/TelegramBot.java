@@ -1,18 +1,19 @@
-package org.example.notification_controller;
+package org.ihorzima.telegram_notification.bot;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-public class MyTelegramBot extends TelegramLongPollingBot {
+public class TelegramBot extends TelegramLongPollingBot {
 
-    public MyTelegramBot(String botToken) {
+    public TelegramBot(String botToken) {
         super(botToken);
     }
 
     @Override
     public String getBotUsername() {
+        // TODO: move to application properties or env
         return "@NotificationSender001bot";
     }
 
