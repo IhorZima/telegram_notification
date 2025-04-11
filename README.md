@@ -17,7 +17,7 @@ App to send notification to user via telegram bot.
 in a SpreadSheets.
 - [ ] Save measurements
 * Receive data in controller
-* For each measurement, find telegramId(chatId) by landId, prepare telegram message and send it to chatId.
+* For each measurement, find telegramId(chatId) by landId, prepare telegram message (PDF?) and send it to chatId.
 * Scheduling (delayed send.)
 
 
