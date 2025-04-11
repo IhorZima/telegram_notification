@@ -1,6 +1,7 @@
 package org.ihorzima.telegram_notification.config;
 
 import org.ihorzima.telegram_notification.bot.TelegramBot;
+import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
 import org.ihorzima.telegram_notification.repository.AccountRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +20,7 @@ public class TelegramBotConfig {
     }
 
     @Bean
-    public TelegramBot myTelegramBot(AccountRepository accountRepository) {
+    public TelegramBot myTelegramBot(AccountLocalRepository accountRepository) {
         // TODO: move to application properties or env
         return new TelegramBot("7597164009:AAGoYwbZlWpUn-VSrRTQkt8y_6Bg62CHC-4", accountRepository);
     }

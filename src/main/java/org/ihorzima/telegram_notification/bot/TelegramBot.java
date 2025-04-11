@@ -2,29 +2,33 @@ package org.ihorzima.telegram_notification.bot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.ihorzima.telegram_notification.model.Account;
-import org.ihorzima.telegram_notification.repository.AccountRepository;
+import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
-import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.InlineQuery;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResult;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 public class TelegramBot extends TelegramLongPollingBot {
+    private static final String ENTER_SEARCH_BUTTON_ID = "btn2";
+    private static final String ENTER_MANUAL_BUTTON_ID = "btn1";
 
-    private final AccountRepository accountRepository;
+    private static final int INLINE_QUERY_LIMIT = 50;
+    private final AccountLocalRepository accountRepository;
 
-    public TelegramBot(String botToken, AccountRepository accountRepository) {
+
+    public TelegramBot(String botToken, AccountLocalRepository accountRepository) {
         super(botToken);
         this.accountRepository = accountRepository;
     }
@@ -41,13 +45,23 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (update.hasInlineQuery()) {
                 handleInlineQuery(update.getInlineQuery());
             }
+            if (update.hasCallbackQuery()) {
+                CallbackQuery callbackQuery = update.getCallbackQuery();
+                Long chatId = callbackQuery.getFrom().getId();
+                String data = callbackQuery.getData();
+                if (ENTER_MANUAL_BUTTON_ID.equals(data)) {
+                    sendTextMessage(chatId.toString(), "будь ласка введіть номер ділянки");
+                }
+            }
 
             if (update.hasMessage() && update.getMessage().hasText()) {
                 String chatId = update.getMessage().getChatId().toString();
                 String receivedText = update.getMessage().getText();
 
                 if (receivedText.equals("/start")) {
-                    sendTextMessage(chatId, "hello it's your Telegram bot 🚀");
+//                    createButton(chatId);
+                    createMarkUp(chatId);
+//                    sendTextMessage(chatId, "hello it's your Telegram bot 🚀");
                 }
             }
         } catch (TelegramApiException e) {
@@ -56,19 +70,91 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     }
 
+    private void createButton(String chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Оберіть варіант");
+        InlineKeyboardButton button1 = new InlineKeyboardButton("Ввести номер ділянки вручну");
+        button1.setCallbackData(ENTER_MANUAL_BUTTON_ID);
+
+        InlineKeyboardButton button2 = new InlineKeyboardButton("Вибрати номер ділянки зі списку");
+        button2.setCallbackData(ENTER_SEARCH_BUTTON_ID);
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(button1);
+        row.add(button2);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(rows);
+
+        message.setReplyMarkup(markup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException("Couldn't send message", e);
+        }
+    }
+
+    private void createMarkUp(String chatId) {
+        InlineKeyboardButton button = new InlineKeyboardButton("🔍 Начать поиск");
+        button.setText("Search");
+        button.setSwitchInlineQueryCurrentChat("");// можно пустую строку ""
+
+        List<InlineKeyboardButton> row = List.of(button);
+        List<List<InlineKeyboardButton>> keyboard = List.of(row);
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(keyboard);
+
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Нажми на кнопку, чтобы начать Inline-запрос:");
+        message.setReplyMarkup(markup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+
+        }
+
+    }
+
     public void handleInlineQuery(InlineQuery inlineQuery) throws TelegramApiException {
         String query = inlineQuery.getQuery().toLowerCase();
+        String offset = inlineQuery.getOffset(); // Получаем `offset` от Telegram
 
-        List<Account> accounts = accountRepository.findAllByLandIdStartingWith(query);
+        // Определяем с какого элемента начинать
+        int offsetIndex = offset.isEmpty() ? 0 : Integer.parseInt(offset);
+
+        // Получаем все аккаунты, соответствующие запросу
+        List<Account> accounts = accountRepository.getAccounts().stream()
+                .filter(account -> account.getLandId().toLowerCase().contains(query))
+                .toList();
 
         if (accounts.isEmpty()) {
-            log.debug("Accounts for query: [{}] not found", inlineQuery);
+            log.debug("Accounts for query [{}] not found", query);
             return;
         }
-        log.info("Found {} accounts", accounts.size());
-        List<InlineQueryResult> accountListInlineQueryResult = convertAccountToInlineQueryResults(accounts);
-        AnswerInlineQuery answer = buildAnswerInlineQuery(inlineQuery, accountListInlineQueryResult);
 
+        log.info("Found {} accounts for query: {}", accounts.size(), query);
+
+        // Реализуем пагинацию (берём нужную порцию данных)
+        List<Account> paginatedAccounts = accounts.stream()
+                .skip(offsetIndex) // Пропускаем записи по `offset`
+                .limit(INLINE_QUERY_LIMIT) // Берём максимум 50 записей
+                .toList();
+
+        List<InlineQueryResult> accountResults = convertAccountToInlineQueryResults(paginatedAccounts);
+
+        // Определяем `next_offset` (если есть ещё данные, передаём Telegram)
+        String nextOffset = (offsetIndex + INLINE_QUERY_LIMIT < accounts.size())
+                ? String.valueOf(offsetIndex + INLINE_QUERY_LIMIT)
+                : ""; // Если данных больше нет, `next_offset` пустой
+
+        AnswerInlineQuery answer = buildAnswerInlineQuery(inlineQuery, accountResults, nextOffset);
         execute(answer);
     }
 
@@ -79,42 +165,46 @@ public class TelegramBot extends TelegramLongPollingBot {
                 .toList();
     }
 
-    private AnswerInlineQuery buildAnswerInlineQuery(InlineQuery inlineQuery, List<InlineQueryResult> queryResults) {
+
+    private InlineQueryResultArticle buildAccountInlineQueryResult(Account account) {
+        InputTextMessageContent messageContent = new InputTextMessageContent(
+                "ℹ *Інформація про ділянку:*\n" +
+                        "🏷 *ID:* `" + escapeMarkdownV2(account.getLandId()) + "`\n" +
+                        "📍 *Адреса:* " + escapeMarkdownV2(account.getAddress()) + "\n" +
+                        "📞 *Телефон:* " + escapeMarkdownV2(account.getPhoneNumber() != null ? account.getPhoneNumber() : "Не указан")
+        );
+        messageContent.setParseMode("MarkdownV2");
+
+        return InlineQueryResultArticle.builder()
+                .id(account.getLandId() + "_" + System.nanoTime()) // ✅ Делаем ID уникальным
+                .title("🌍 Земельна ділянка: " + account.getLandId())
+                .description(account.getAddress())
+                .inputMessageContent(messageContent)
+                .build();
+    }
+
+    private AnswerInlineQuery buildAnswerInlineQuery(InlineQuery inlineQuery, List<InlineQueryResult> queryResults, String nextOffset) {
         AnswerInlineQuery answer = new AnswerInlineQuery();
         answer.setInlineQueryId(inlineQuery.getId());
         answer.setResults(queryResults);
         // TODO: extract to property. Currently no caching
-        answer.setCacheTime(1);
+        answer.setCacheTime(5); // Кешируем 5 секунд
+        answer.setIsPersonal(true); // Результаты видит только пользователь
+        answer.setNextOffset(nextOffset); // Передаём `next_offset`
+
         return answer;
     }
 
-    private InlineQueryResultArticle buildAccountInlineQueryResult(Account account) {
-        return InlineQueryResultArticle.builder()
-                .id(account.getLandId())
-                .title(account.getLandId())
-                .description(account.getAddress())
-                .inputMessageContent(new InputTextMessageContent(account.getLandId()))
-                .build();
+    String escapeMarkdownV2(String text) {
+        if (text == null) return ""; // Если null — возвращаем пустую строку
+        return text.replaceAll("([_*.\\[\\]()~`>#+\\-=|{}!])", "\\\\$1");
     }
 
-    public void sendTextMessage(String chatId, String text) throws TelegramApiException {
+    private void sendTextMessage(String chatId, String text) throws TelegramApiException {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(text);
 
         execute(message);
-    }
-
-    public void sendFile(String chatId, String fileName, byte[] fileContent) throws TelegramApiException {
-        InputStream pdfStream = new ByteArrayInputStream(fileContent);
-
-        InputFile inputFile = new InputFile(pdfStream, fileName);
-
-        SendDocument documentFile = new SendDocument();
-        documentFile.setChatId(chatId);
-        documentFile.setDocument(inputFile);
-        documentFile.setCaption(fileName);
-
-        execute(documentFile);
     }
 }
