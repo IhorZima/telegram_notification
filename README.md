@@ -15,7 +15,7 @@ App to send notification to user via telegram bot.
 * Once "Search" -> apply inline query
 * Process register message and send update to admin to readable format. Send link to "save button" 
 in a SpreadSheets.
-- [ ] Save measurements
+- [x] Process measurements
 * Receive data in controller
 * For each measurement, find telegramId(chatId) by landId, prepare telegram message (PDF?) and send it to chatId.
 * Scheduling (delayed send.)
