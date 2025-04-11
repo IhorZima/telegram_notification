@@ -1,5 +1,6 @@
 package org.ihorzima.telegram_notification.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -9,10 +10,11 @@ import lombok.Data;
 @Entity
 @Table(name = "catalog")
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Account {
 
     @Id
-    private long id;
+    private Long id;
     @Column(name = "land_id")
     private String landId;
     @Column(name = "full_name")
