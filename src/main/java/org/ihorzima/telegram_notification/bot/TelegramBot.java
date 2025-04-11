@@ -5,7 +5,9 @@ import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.repository.AccountRepository;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.InlineQuery;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
@@ -13,6 +15,8 @@ import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.List;
 
 @Slf4j
@@ -93,11 +97,24 @@ public class TelegramBot extends TelegramLongPollingBot {
                 .build();
     }
 
-    private void sendTextMessage(String chatId, String text) throws TelegramApiException {
+    public void sendTextMessage(String chatId, String text) throws TelegramApiException {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(text);
 
         execute(message);
+    }
+
+    public void sendFile(String chatId, String fileName, byte[] fileContent) throws TelegramApiException {
+        InputStream pdfStream = new ByteArrayInputStream(fileContent);
+
+        InputFile inputFile = new InputFile(pdfStream, fileName);
+
+        SendDocument documentFile = new SendDocument();
+        documentFile.setChatId(chatId);
+        documentFile.setDocument(inputFile);
+        documentFile.setCaption(fileName);
+
+        execute(documentFile);
     }
 }
