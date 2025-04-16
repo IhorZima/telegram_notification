@@ -3,10 +3,15 @@ package org.ihorzima.telegram_notification.bot;
 import lombok.extern.slf4j.Slf4j;
 import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
+import org.ihorzima.telegram_notification.util.InlineAccountCache;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.InlineQuery;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
@@ -16,17 +21,22 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class TelegramBot extends TelegramLongPollingBot {
     private static final String ENTER_SEARCH_BUTTON_ID = "btn2";
     private static final String ENTER_MANUAL_BUTTON_ID = "btn1";
+    private static final Pattern RECEIVED_LAND_ID_PATTERN = Pattern.compile("(?<=ділянку:\\s?).*");
+    private static final String ADMIN_CHAT_ID = "578803967";
 
     private static final int INLINE_QUERY_LIMIT = 50;
     private final AccountLocalRepository accountRepository;
-
 
     public TelegramBot(String botToken, AccountLocalRepository accountRepository) {
         super(botToken);
@@ -54,15 +64,25 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
 
-            if (update.hasMessage() && update.getMessage().hasText()) {
-                String chatId = update.getMessage().getChatId().toString();
-                String receivedText = update.getMessage().getText();
+//            if(update.getInlineQuery() != null) {
+//                Account account = InlineAccountCache.retrieve(update.getInlineQuery().getId());
+//                if (account != null) {
+//                    InputTextMessageContent messageContent = new InputTextMessageContent(
+//                            "ℹ *Інформація про ділянку:*\n" +
+//                                    "🏷 *ID:* `" + escapeMarkdownV2(account.getLandId()) + "`\n" +
+//                                    "📍 *Адреса:* " + escapeMarkdownV2(account.getAddress()) + "\n" +
+//                                    "📞 *Телефон:* " + escapeMarkdownV2(account.getPhoneNumber() != null ? account.getPhoneNumber() : "Не указан"));
+//                    messageContent.setParseMode("MarkdownV2");
+//                    SendMessage message = new SendMessage();
+//                    message.setText(messageContent.toString());
+//                    message.setChatId("578803967");
+//                    message.setText("Оберіть варіант");
+//                    execute(message);
+//                }
+//            }
 
-                if (receivedText.equals("/start")) {
-//                    createButton(chatId);
-                    createMarkUp(chatId);
-//                    sendTextMessage(chatId, "hello it's your Telegram bot 🚀");
-                }
+            if (update.hasMessage() && update.getMessage().hasText()) {
+                handleMessage(update.getMessage());
             }
         } catch (TelegramApiException e) {
             log.error("Couldn't process telegram message: [{}]", update.getUpdateId(), e);
@@ -70,15 +90,51 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     }
 
+    private void handleMessage(Message message) throws TelegramApiException {
+        String chatId = message.getChatId().toString();
+        String receivedText = message.getText();
+
+        if (receivedText.equals("/start")) {
+            createButton(chatId);
+
+        } else {
+            Matcher matcher = RECEIVED_LAND_ID_PATTERN.matcher(receivedText);
+
+            if (matcher.find()) {
+                log.info("Found received land ID: {}", matcher.group());
+                String landId = matcher.group().trim();
+                SendMessage messageForAdmin = new SendMessage();
+                messageForAdmin.setChatId(ADMIN_CHAT_ID);
+                messageForAdmin.setText("*Ділянка:* `" + chatId + "`\n*ChatId:* `" + landId + "`");
+
+                messageForAdmin.setParseMode(ParseMode.MARKDOWNV2);
+
+                execute(messageForAdmin);
+            }
+        }
+    }
+
+    public void sendFile(String chatId, String fileName, byte[] fileContent) throws TelegramApiException {
+        InputStream pdfStream = new ByteArrayInputStream(fileContent);
+
+        InputFile inputFile = new InputFile(pdfStream, fileName);
+
+        SendDocument documentFile = new SendDocument();
+        documentFile.setChatId(chatId);
+        documentFile.setDocument(inputFile);
+        documentFile.setCaption(fileName);
+
+        execute(documentFile);
+    }
+
+
     private void createButton(String chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText("Оберіть варіант");
         InlineKeyboardButton button1 = new InlineKeyboardButton("Ввести номер ділянки вручну");
         button1.setCallbackData(ENTER_MANUAL_BUTTON_ID);
 
         InlineKeyboardButton button2 = new InlineKeyboardButton("Вибрати номер ділянки зі списку");
-        button2.setCallbackData(ENTER_SEARCH_BUTTON_ID);
+//        button2.setCallbackData(ENTER_SEARCH_BUTTON_ID);
+        button2.setSwitchInlineQueryCurrentChat("");// можно пустую строку ""
         List<InlineKeyboardButton> row = new ArrayList<>();
         row.add(button1);
         row.add(button2);
@@ -89,6 +145,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(rows);
 
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Оберіть варіант");
         message.setReplyMarkup(markup);
 
         try {
@@ -117,12 +176,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException e) {
-
         }
-
     }
 
-    public void handleInlineQuery(InlineQuery inlineQuery) throws TelegramApiException {
+
+    private void handleInlineQuery(InlineQuery inlineQuery) throws TelegramApiException {
         String query = inlineQuery.getQuery().toLowerCase();
         String offset = inlineQuery.getOffset(); // Получаем `offset` от Telegram
 
@@ -165,35 +223,32 @@ public class TelegramBot extends TelegramLongPollingBot {
                 .toList();
     }
 
+    private AnswerInlineQuery buildAnswerInlineQuery(InlineQuery inlineQuery, List<InlineQueryResult> queryResults, String nextOffset) {
+        AnswerInlineQuery answer = new AnswerInlineQuery();
+        answer.setInlineQueryId(inlineQuery.getId());
+        answer.setResults(queryResults);
+        // TODO: extract to property. Currently no caching
+        answer.setCacheTime(1); // Кешируем 5 секунд
+        answer.setIsPersonal(true); // Результаты видит только пользователь
+        answer.setNextOffset(nextOffset); // Передаём `next_offset`
+
+        return answer;
+    }
 
     private InlineQueryResultArticle buildAccountInlineQueryResult(Account account) {
         InputTextMessageContent messageContent = new InputTextMessageContent(
-                "ℹ *Інформація про ділянку:*\n" +
-                        "🏷 *ID:* `" + escapeMarkdownV2(account.getLandId()) + "`\n" +
-                        "📍 *Адреса:* " + escapeMarkdownV2(account.getAddress()) + "\n" +
-                        "📞 *Телефон:* " + escapeMarkdownV2(account.getPhoneNumber() != null ? account.getPhoneNumber() : "Не указан")
+                "✅ *Ви вибрали ділянку:* `" + escapeMarkdownV2(account.getLandId()) + "`"
         );
         messageContent.setParseMode("MarkdownV2");
 
         return InlineQueryResultArticle.builder()
-                .id(account.getLandId() + "_" + System.nanoTime()) // ✅ Делаем ID уникальным
+                .id(InlineAccountCache.store(account) + "_" + System.nanoTime()) // ✅ Делаем ID уникальным
                 .title("🌍 Земельна ділянка: " + account.getLandId())
                 .description(account.getAddress())
                 .inputMessageContent(messageContent)
                 .build();
     }
 
-    private AnswerInlineQuery buildAnswerInlineQuery(InlineQuery inlineQuery, List<InlineQueryResult> queryResults, String nextOffset) {
-        AnswerInlineQuery answer = new AnswerInlineQuery();
-        answer.setInlineQueryId(inlineQuery.getId());
-        answer.setResults(queryResults);
-        // TODO: extract to property. Currently no caching
-        answer.setCacheTime(5); // Кешируем 5 секунд
-        answer.setIsPersonal(true); // Результаты видит только пользователь
-        answer.setNextOffset(nextOffset); // Передаём `next_offset`
-
-        return answer;
-    }
 
     String escapeMarkdownV2(String text) {
         if (text == null) return ""; // Если null — возвращаем пустую строку
