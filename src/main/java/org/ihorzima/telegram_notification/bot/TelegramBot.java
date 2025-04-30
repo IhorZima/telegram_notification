@@ -1,9 +1,11 @@
 package org.ihorzima.telegram_notification.bot;
 
 import lombok.extern.slf4j.Slf4j;
+import org.ihorzima.telegram_notification.config.AdminChatIdHolderConfig;
 import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
 import org.ihorzima.telegram_notification.util.InlineAccountCache;
+import org.springframework.beans.factory.annotation.Value;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
@@ -30,23 +32,27 @@ import java.util.regex.Pattern;
 
 @Slf4j
 public class TelegramBot extends TelegramLongPollingBot {
-    private static final String ENTER_SEARCH_BUTTON_ID = "btn2";
     private static final String ENTER_MANUAL_BUTTON_ID = "btn1";
     private static final Pattern RECEIVED_LAND_ID_PATTERN = Pattern.compile("(?<=ділянку:\\s?).*");
-    private static final String ADMIN_CHAT_ID = "578803967";
-
     private static final int INLINE_QUERY_LIMIT = 50;
-    private final AccountLocalRepository accountRepository;
 
-    public TelegramBot(String botToken, AccountLocalRepository accountRepository) {
+    @Value("${bot.user.name}")
+    private String botUserName;
+    @Value("${bot.admin.keyword}")
+    private String adminKeyword;
+
+    private final AccountLocalRepository accountRepository;
+    private final AdminChatIdHolderConfig adminChatIdHolderConfig;
+
+    public TelegramBot(String botToken, AccountLocalRepository accountRepository, AdminChatIdHolderConfig adminChatIdHolderConfig) {
         super(botToken);
         this.accountRepository = accountRepository;
+        this.adminChatIdHolderConfig = adminChatIdHolderConfig;
     }
 
     @Override
     public String getBotUsername() {
-        // TODO: move to application properties or env
-        return "@NotificationSender001bot";
+        return botUserName;
     }
 
     @Override
@@ -64,30 +70,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
 
-//            if(update.getInlineQuery() != null) {
-//                Account account = InlineAccountCache.retrieve(update.getInlineQuery().getId());
-//                if (account != null) {
-//                    InputTextMessageContent messageContent = new InputTextMessageContent(
-//                            "ℹ *Інформація про ділянку:*\n" +
-//                                    "🏷 *ID:* `" + escapeMarkdownV2(account.getLandId()) + "`\n" +
-//                                    "📍 *Адреса:* " + escapeMarkdownV2(account.getAddress()) + "\n" +
-//                                    "📞 *Телефон:* " + escapeMarkdownV2(account.getPhoneNumber() != null ? account.getPhoneNumber() : "Не указан"));
-//                    messageContent.setParseMode("MarkdownV2");
-//                    SendMessage message = new SendMessage();
-//                    message.setText(messageContent.toString());
-//                    message.setChatId("578803967");
-//                    message.setText("Оберіть варіант");
-//                    execute(message);
-//                }
-//            }
-
             if (update.hasMessage() && update.getMessage().hasText()) {
                 handleMessage(update.getMessage());
             }
         } catch (TelegramApiException e) {
             log.error("Couldn't process telegram message: [{}]", update.getUpdateId(), e);
         }
-
     }
 
     private void handleMessage(Message message) throws TelegramApiException {
@@ -96,7 +84,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         if (receivedText.equals("/start")) {
             createButton(chatId);
-
         } else {
             Matcher matcher = RECEIVED_LAND_ID_PATTERN.matcher(receivedText);
 
@@ -104,11 +91,24 @@ public class TelegramBot extends TelegramLongPollingBot {
                 log.info("Found received land ID: {}", matcher.group());
                 String landId = matcher.group().trim();
                 SendMessage messageForAdmin = new SendMessage();
-                messageForAdmin.setChatId(ADMIN_CHAT_ID);
-                messageForAdmin.setText("*Ділянка:* `" + chatId + "`\n*ChatId:* `" + landId + "`");
+                if (adminChatIdHolderConfig.getChatId() == null) {
+                    log.info("Admin chat id is null. Sending admin chat id to bot");
+                    return;
+                }
+                messageForAdmin.setChatId(adminChatIdHolderConfig.getChatId());
+                messageForAdmin.setText("*Ділянка:* `" + landId + "`\n*ChatId:* `" + chatId + "`");
 
                 messageForAdmin.setParseMode(ParseMode.MARKDOWNV2);
 
+                execute(messageForAdmin);
+            }
+
+            if (receivedText.equals("/admin " + adminKeyword)) {
+                adminChatIdHolderConfig.setChatId(message.getChatId().toString());
+                log.info("Found admin chat ID: {}", adminChatIdHolderConfig.getChatId());
+                SendMessage messageForAdmin = new SendMessage();
+                messageForAdmin.setChatId(adminChatIdHolderConfig.getChatId());
+                messageForAdmin.setText(adminChatIdHolderConfig.getChatId());
                 execute(messageForAdmin);
             }
         }
@@ -129,25 +129,14 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
     private void createButton(String chatId) {
-        InlineKeyboardButton button1 = new InlineKeyboardButton("Ввести номер ділянки вручну");
-        button1.setCallbackData(ENTER_MANUAL_BUTTON_ID);
-
-        InlineKeyboardButton button2 = new InlineKeyboardButton("Вибрати номер ділянки зі списку");
-//        button2.setCallbackData(ENTER_SEARCH_BUTTON_ID);
-        button2.setSwitchInlineQueryCurrentChat("");// можно пустую строку ""
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(button1);
-        row.add(button2);
-
-        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        rows.add(row);
+        List<List<InlineKeyboardButton>> rows = getLists();
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(rows);
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Оберіть варіант");
+        message.setText("Оберіть варіант для вводу номера ділянки");
         message.setReplyMarkup(markup);
 
         try {
@@ -157,37 +146,26 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void createMarkUp(String chatId) {
-        InlineKeyboardButton button = new InlineKeyboardButton("🔍 Начать поиск");
-        button.setText("Search");
-        button.setSwitchInlineQueryCurrentChat("");// можно пустую строку ""
+    private List<List<InlineKeyboardButton>> getLists() {
+        InlineKeyboardButton button1 = new InlineKeyboardButton("Ввести вручну");
+        button1.setCallbackData(ENTER_MANUAL_BUTTON_ID);
+        InlineKeyboardButton button2 = new InlineKeyboardButton("🔍 Вибрати номер зі списку");
+        button2.setSwitchInlineQueryCurrentChat("");
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(button1);
+        row.add(button2);
 
-        List<InlineKeyboardButton> row = List.of(button);
-        List<List<InlineKeyboardButton>> keyboard = List.of(row);
-
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(keyboard);
-
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Нажми на кнопку, чтобы начать Inline-запрос:");
-        message.setReplyMarkup(markup);
-
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-        }
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
+        return rows;
     }
-
 
     private void handleInlineQuery(InlineQuery inlineQuery) throws TelegramApiException {
         String query = inlineQuery.getQuery().toLowerCase();
-        String offset = inlineQuery.getOffset(); // Получаем `offset` от Telegram
+        String offset = inlineQuery.getOffset();
 
-        // Определяем с какого элемента начинать
         int offsetIndex = offset.isEmpty() ? 0 : Integer.parseInt(offset);
 
-        // Получаем все аккаунты, соответствующие запросу
         List<Account> accounts = accountRepository.getAccounts().stream()
                 .filter(account -> account.getLandId().toLowerCase().contains(query))
                 .toList();
@@ -199,27 +177,24 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         log.info("Found {} accounts for query: {}", accounts.size(), query);
 
-        // Реализуем пагинацию (берём нужную порцию данных)
         List<Account> paginatedAccounts = accounts.stream()
-                .skip(offsetIndex) // Пропускаем записи по `offset`
-                .limit(INLINE_QUERY_LIMIT) // Берём максимум 50 записей
+                .skip(offsetIndex)
+                .limit(INLINE_QUERY_LIMIT)
                 .toList();
 
         List<InlineQueryResult> accountResults = convertAccountToInlineQueryResults(paginatedAccounts);
 
-        // Определяем `next_offset` (если есть ещё данные, передаём Telegram)
         String nextOffset = (offsetIndex + INLINE_QUERY_LIMIT < accounts.size())
                 ? String.valueOf(offsetIndex + INLINE_QUERY_LIMIT)
-                : ""; // Если данных больше нет, `next_offset` пустой
+                : "";
 
         AnswerInlineQuery answer = buildAnswerInlineQuery(inlineQuery, accountResults, nextOffset);
         execute(answer);
     }
 
     private List<InlineQueryResult> convertAccountToInlineQueryResults(List<Account> accounts) {
-        // casting to InlineQueryResult
         return accounts.stream().map(this::buildAccountInlineQueryResult)
-                .map(article -> (InlineQueryResult) article)  // casting to InlineQueryResult
+                .map(article -> (InlineQueryResult) article)
                 .toList();
     }
 
@@ -228,10 +203,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         answer.setInlineQueryId(inlineQuery.getId());
         answer.setResults(queryResults);
         // TODO: extract to property. Currently no caching
-        answer.setCacheTime(1); // Кешируем 5 секунд
-        answer.setIsPersonal(true); // Результаты видит только пользователь
-        answer.setNextOffset(nextOffset); // Передаём `next_offset`
-
+        answer.setCacheTime(5);
+        answer.setIsPersonal(true);
+        answer.setNextOffset(nextOffset);
         return answer;
     }
 
@@ -242,7 +216,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         messageContent.setParseMode("MarkdownV2");
 
         return InlineQueryResultArticle.builder()
-                .id(InlineAccountCache.store(account) + "_" + System.nanoTime()) // ✅ Делаем ID уникальным
+                .id(InlineAccountCache.store(account) + "_" + System.nanoTime())
                 .title("🌍 Земельна ділянка: " + account.getLandId())
                 .description(account.getAddress())
                 .inputMessageContent(messageContent)
@@ -251,7 +225,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
     String escapeMarkdownV2(String text) {
-        if (text == null) return ""; // Если null — возвращаем пустую строку
+        if (text == null) return "";
         return text.replaceAll("([_*.\\[\\]()~`>#+\\-=|{}!])", "\\\\$1");
     }
 

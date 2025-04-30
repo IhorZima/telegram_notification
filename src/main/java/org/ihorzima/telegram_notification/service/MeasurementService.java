@@ -5,9 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.ihorzima.telegram_notification.bot.TelegramBot;
 import org.ihorzima.telegram_notification.builder.PdfFileBuilder;
-import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.model.Measurement;
-import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,11 +15,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Component
 public class MeasurementService {
+    @Value("${pdf.file.name}")
+    private String pdfFileName;
 
-    // TODO: extract to config
-    private static final String PDF_FILENAME = "measurement.pdf";
-
-    private final AccountLocalRepository accountLocalRepository;
     private final TelegramBot telegramBot;
     private final PdfFileBuilder<Measurement> measurementPdfFileBuilder;
 
@@ -33,24 +30,16 @@ public class MeasurementService {
     private void processMeasurement(Measurement measurement) {
         try {
             String landId = measurement.getLandId();
-
-            Account accountByLandId = accountLocalRepository.getAccountByLandId(landId);
-
-            if (accountByLandId == null) {
-                log.error("Account with landId {} not found", landId);
-                return;
-            }
-
-            if (Strings.isEmpty(accountByLandId.getTelegramId())) {
+            if (Strings.isEmpty(measurement.getTelegramId())) {
                 log.error("Telegram chatId for a landId {} not found", landId);
                 return;
             }
 
             byte[] pdfFileContent = measurementPdfFileBuilder.build(measurement);
-            String accountChatId = accountByLandId.getTelegramId();
+            String accountChatId = measurement.getTelegramId();
             log.info("Sending measurement to {}", accountChatId);
-            telegramBot.sendFile(accountChatId, PDF_FILENAME, pdfFileContent);
-            log.info("Measurement is sent to {}", accountByLandId.getTelegramId());
+            telegramBot.sendFile(accountChatId, pdfFileName, pdfFileContent);
+            log.info("Measurement is sent to {}", measurement.getTelegramId());
         } catch (Exception ex) {
             log.error("Could not process measurement", ex);
         }

@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Measurement {
     private String landId;
+    private String nameSecondName;
+    private String street;
     private String previousIndex;
     private String previousDate;
     private String previousNight;
@@ -27,5 +29,6 @@ public class Measurement {
     private String overnightDebtForTheCurrentPeriodUAH;
     private String dailyDebtForTheCurrentPeriodUAH;
     private String toBePaid;
+    private String telegramId;
 
 }

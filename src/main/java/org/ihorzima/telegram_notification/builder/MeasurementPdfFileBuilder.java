@@ -1,7 +1,9 @@
 package org.ihorzima.telegram_notification.builder;
 
-import com.lowagie.text.*;
 import com.lowagie.text.Font;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.*;
+import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -10,73 +12,157 @@ import org.springframework.stereotype.Component;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
+import java.util.stream.Stream;
 
 @Component
 public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
 
+    public static final String FONT_PATH = "fonts/Roboto/Roboto-Light.ttf";
+
     @Override
     public byte[] build(Measurement measurement) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document document = new Document(PageSize.A4.rotate()); // Rotate for wider tables
+            Document document = new Document(PageSize.A4);
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // Add title
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
-            Paragraph paragraph = new Paragraph("Показники", titleFont);
-            paragraph.setAlignment(Element.ALIGN_CENTER);
-            document.add(paragraph);
-            document.add(Chunk.NEWLINE);
+            BaseFont baseFont = BaseFont.createFont(FONT_PATH, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            Font font = new Font(baseFont, 20, Font.BOLD, Color.BLACK);
 
-            // Define table with 17 columns
-            PdfPTable table = new PdfPTable(17);
-            table.setWidthPercentage(100f);
-            table.setSpacingBefore(5f);
+            Font paragraphTitleFont = new Font(baseFont, 12, Font.BOLD, Color.BLACK);
+            Font infoFont = new Font(baseFont, 10, Font.NORMAL, Color.BLACK);
 
-            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9);
-            Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 8);
+            titleConfigure(font, document);
+            dateLocationNameSecondNameLandParagraph(measurement, paragraphTitleFont, infoFont, document);
+            configurePaymentDetailsParagraph(paragraphTitleFont, document, infoFont);
+            tariffCalculationParagraph(measurement, paragraphTitleFont, document, infoFont);
+            amountToBePaidParagraph(measurement, paragraphTitleFont, document, infoFont);
 
-            // Header row
-            // TODO: rename headers to UA
-            String[] headers = {
-                    "Land ID", "Previous Index", "Previous Date", "Previous Night", "Previous Day",
-                    "Current Date", "Current Night", "Current Day", "Payment Date",
-                    "Last Night Indicator", "Last Daily Indicator", "Last Payment Amount",
-                    "Prev Night Debt (UAH)", "Prev Daily Debt (UAH)",
-                    "Current Night Debt (UAH)", "Current Daily Debt (UAH)", "To Be Paid"
-            };
-
-            for (String header : headers) {
-                PdfPCell headerCell = new PdfPCell(new Phrase(header, headerFont));
-                headerCell.setBackgroundColor(Color.LIGHT_GRAY);
-                headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                table.addCell(headerCell);
-            }
-
-            // Data rows
-            table.addCell(new Phrase(measurement.getLandId(), cellFont));
-            table.addCell(new Phrase(measurement.getPreviousIndex(), cellFont));
-            table.addCell(new Phrase(measurement.getPreviousDate(), cellFont));
-            table.addCell(new Phrase(measurement.getPreviousNight(), cellFont));
-            table.addCell(new Phrase(measurement.getPreviousDay(), cellFont));
-            table.addCell(new Phrase(measurement.getCurrentDate(), cellFont));
-            table.addCell(new Phrase(measurement.getCurrentNight(), cellFont));
-            table.addCell(new Phrase(measurement.getCurrentDay(), cellFont));
-            table.addCell(new Phrase(measurement.getPaymentDate(), cellFont));
-            table.addCell(new Phrase(measurement.getLastPaymentIndicatorsNight(), cellFont));
-            table.addCell(new Phrase(measurement.getLastPaymentIndicatorsDaily(), cellFont));
-            table.addCell(new Phrase(measurement.getLastPaymentAmount(), cellFont));
-            table.addCell(new Phrase(measurement.getTotalNightDebtForPreviousPeriodsUAH(), cellFont));
-            table.addCell(new Phrase(measurement.getTotalDailyDebtForPreviousPeriodsUAH(), cellFont));
-            table.addCell(new Phrase(measurement.getOvernightDebtForTheCurrentPeriodUAH(), cellFont));
-            table.addCell(new Phrase(measurement.getDailyDebtForTheCurrentPeriodUAH(), cellFont));
-            table.addCell(new Phrase(measurement.getToBePaid(), cellFont));
-
-            document.add(table);
+            document.addHeader("header", "header");
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF", e);
         }
+    }
+
+    private void amountToBePaidParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
+        Paragraph paragraph4 = new Paragraph("Сума до сплати становить - " + measurement.getToBePaid() + "грн.", paragraphTitleFont);
+        paragraph4.setSpacingBefore(10);
+        document.add(paragraph4);
+
+        Paragraph paragraph5 = new Paragraph("Призначення платежу вказати", paragraphTitleFont);
+        paragraph5.setSpacingBefore(10);
+        document.add(paragraph5);
+
+        Paragraph paragraph6 = new Paragraph("Сплата за електроенергію : " +
+                measurement.getLandId() +
+                ", " +
+                measurement.getNameSecondName() +
+                ", денні " + measurement.getCurrentDay() + "-" + measurement.getLastPaymentIndicatorsDaily() + ", нічні " +
+                measurement.getCurrentNight() + "-" + measurement.getLastPaymentIndicatorsNight(), infoFont);
+        paragraph6.setSpacingBefore(10);
+        document.add(paragraph6);
+    }
+
+    private void tariffCalculationParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
+        Paragraph paragraph3 = new Paragraph("Розрахунок", paragraphTitleFont);
+        paragraph3.setSpacingBefore(5);
+        document.add(paragraph3);
+
+        PdfPTable table3 = new PdfPTable(5);
+        table3.setWidthPercentage(100);
+        table3.setSpacingBefore(20);
+
+        addCell(table3, "Денні поточні", infoFont);
+        addCell(table3, "Денні останні", infoFont);
+        addCell(table3, "Нічні поточні", infoFont);
+        addCell(table3, "Нічні останні", infoFont);
+        addCell(table3, "Разом до сплати", infoFont);
+
+        addCell(table3, measurement.getCurrentDay(), infoFont);
+        addCell(table3, measurement.getLastPaymentIndicatorsDaily(), infoFont);
+        addCell(table3, measurement.getCurrentNight(), infoFont);
+        addCell(table3, measurement.getLastPaymentIndicatorsNight(), infoFont);
+        addCell(table3, measurement.getToBePaid(), infoFont);
+
+        document.add(table3);
+    }
+
+    private void configurePaymentDetailsParagraph(Font paragraphTitleFont, Document document, Font infoFont) {
+        PdfPTable table = new PdfPTable(2);
+        table.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.setWidthPercentage(50);
+        table.setWidths(new float[]{2f, 6f});
+
+        table.setSpacingBefore(20);
+        table.setSpacingAfter(20);
+
+        Paragraph paragraph2 = new Paragraph("Реквізити для сплати", paragraphTitleFont);
+        paragraph2.setSpacingBefore(10);
+
+        document.add(paragraph2);
+
+        addCell(table, "Счет", infoFont);
+        addCell(table, "UA603052990000026000026247033", infoFont);
+        addCell(table, "МФО", infoFont);
+        addCell(table, "305299", infoFont);
+        addCell(table, "Банк", infoFont);
+        addCell(table, "приватбанк", infoFont);
+        addCell(table, "Отримувач", infoFont);
+        addCell(table, "ОК СТ Злагода", infoFont);
+        addCell(table, "ЄДРПОУ", infoFont);
+        addCell(table, "45371936", infoFont);
+
+        document.add(table);
+    }
+
+    private void dateLocationNameSecondNameLandParagraph(Measurement measurement, Font paragraphTitleFont, Font infoFont, Document document) {
+        PdfPTable table2 = new PdfPTable(2);
+        table2.setWidthPercentage(100);
+
+        PdfPCell leftCell1 = new PdfPCell(new Phrase("Від СТ “Злагода”", paragraphTitleFont));
+        PdfPCell rightCell1 = new PdfPCell(new Phrase("місяць формування рахунку", paragraphTitleFont));
+
+        PdfPCell leftCell2 = new PdfPCell(new Phrase("5 територія", infoFont));
+        PdfPCell rightCell2 = new PdfPCell(new Phrase(measurement.getCurrentDate(), infoFont));
+
+        Stream.of(leftCell1, rightCell1, leftCell2, rightCell2).forEach(cell -> {
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        });
+
+        rightCell1.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        rightCell2.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        table2.addCell(leftCell1);
+        table2.addCell(rightCell1);
+        table2.addCell(leftCell2);
+        table2.addCell(rightCell2);
+
+        table2.setSpacingAfter(20);
+
+        document.add(table2);
+
+        document.add(new Paragraph("ПІБ власника ділянки", paragraphTitleFont));
+        document.add(new Paragraph(measurement.getNameSecondName(), infoFont));
+        document.add(new Paragraph("Вулиця", paragraphTitleFont));
+        document.add(new Paragraph(measurement.getStreet(), infoFont));
+        document.add(new Paragraph("Ділянка", paragraphTitleFont));
+        document.add(new Paragraph(measurement.getLandId(), infoFont));
+    }
+
+    private void titleConfigure(Font font, Document document) {
+        Paragraph paragraph = new Paragraph("Рахунок-повідомлення", font);
+        paragraph.setAlignment(Element.ALIGN_CENTER);
+        document.add(paragraph);
+        document.add(Chunk.NEWLINE);
+    }
+
+    private void addCell(PdfPTable table, String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setBorder(Rectangle.BOX);
+        cell.setPadding(2);
+        table.addCell(cell);
     }
 }
