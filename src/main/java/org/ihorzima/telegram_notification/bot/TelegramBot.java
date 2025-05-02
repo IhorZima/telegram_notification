@@ -1,11 +1,13 @@
 package org.ihorzima.telegram_notification.bot;
 
 import lombok.extern.slf4j.Slf4j;
-import org.ihorzima.telegram_notification.config.AdminChatIdHolderConfig;
+import org.ihorzima.telegram_notification.config.AdminChatIdHolder;
+import org.ihorzima.telegram_notification.config.TelegramBotProperties;
 import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
 import org.ihorzima.telegram_notification.util.InlineAccountCache;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
@@ -31,28 +33,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@EnableConfigurationProperties(TelegramBotProperties.class)
 public class TelegramBot extends TelegramLongPollingBot {
     private static final String ENTER_MANUAL_BUTTON_ID = "btn1";
     private static final Pattern RECEIVED_LAND_ID_PATTERN = Pattern.compile("(?<=ділянку:\\s?).*");
     private static final int INLINE_QUERY_LIMIT = 50;
 
-    @Value("${bot.user.name}")
-    private String botUserName;
-    @Value("${bot.admin.keyword}")
-    private String adminKeyword;
-
     private final AccountLocalRepository accountRepository;
-    private final AdminChatIdHolderConfig adminChatIdHolderConfig;
+    private final AdminChatIdHolder adminChatIdHolder;
+    private final TelegramBotProperties telegramBotProperties;
 
-    public TelegramBot(String botToken, AccountLocalRepository accountRepository, AdminChatIdHolderConfig adminChatIdHolderConfig) {
+    public TelegramBot(String botToken, AccountLocalRepository accountRepository, AdminChatIdHolder adminChatIdHolderConfig, TelegramBotProperties telegramBotProperties) {
         super(botToken);
         this.accountRepository = accountRepository;
-        this.adminChatIdHolderConfig = adminChatIdHolderConfig;
+        this.adminChatIdHolder = adminChatIdHolderConfig;
+        this.telegramBotProperties = telegramBotProperties;
     }
 
     @Override
     public String getBotUsername() {
-        return botUserName;
+        return telegramBotProperties.getBotUserName();
     }
 
     @Override
@@ -91,11 +91,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                 log.info("Found received land ID: {}", matcher.group());
                 String landId = matcher.group().trim();
                 SendMessage messageForAdmin = new SendMessage();
-                if (adminChatIdHolderConfig.getChatId() == null) {
+                if (!adminChatIdHolder.getListChatId().stream().findFirst().isPresent()) {
                     log.info("Admin chat id is null. Sending admin chat id to bot");
                     return;
                 }
-                messageForAdmin.setChatId(adminChatIdHolderConfig.getChatId());
+                messageForAdmin.setChatId(adminChatIdHolder.getListChatId().stream().findFirst().get());
                 messageForAdmin.setText("*Ділянка:* `" + landId + "`\n*ChatId:* `" + chatId + "`");
 
                 messageForAdmin.setParseMode(ParseMode.MARKDOWNV2);
@@ -103,12 +103,14 @@ public class TelegramBot extends TelegramLongPollingBot {
                 execute(messageForAdmin);
             }
 
-            if (receivedText.equals("/admin " + adminKeyword)) {
-                adminChatIdHolderConfig.setChatId(message.getChatId().toString());
-                log.info("Found admin chat ID: {}", adminChatIdHolderConfig.getChatId());
+            if (receivedText.equals("/admin " + telegramBotProperties.getAdminPassphrase())) {
+                adminChatIdHolder.getListChatId().add(message.getChatId().toString());
+                if (adminChatIdHolder.getListChatId().contains(message.getChatId().toString())) {
+                    log.info("Found admin chat ID: {}", message.getChatId().toString());
+                }
                 SendMessage messageForAdmin = new SendMessage();
-                messageForAdmin.setChatId(adminChatIdHolderConfig.getChatId());
-                messageForAdmin.setText(adminChatIdHolderConfig.getChatId());
+                messageForAdmin.setChatId(message.getChatId().toString());
+                messageForAdmin.setText(message.getChatId().toString());
                 execute(messageForAdmin);
             }
         }
@@ -202,7 +204,6 @@ public class TelegramBot extends TelegramLongPollingBot {
         AnswerInlineQuery answer = new AnswerInlineQuery();
         answer.setInlineQueryId(inlineQuery.getId());
         answer.setResults(queryResults);
-        // TODO: extract to property. Currently no caching
         answer.setCacheTime(5);
         answer.setIsPersonal(true);
         answer.setNextOffset(nextOffset);
