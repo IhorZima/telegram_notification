@@ -1,7 +1,10 @@
 package org.ihorzima.telegram_notification.config;
 
 import org.ihorzima.telegram_notification.bot.TelegramBot;
+import org.ihorzima.telegram_notification.builder.PdfFileBuilder;
+import org.ihorzima.telegram_notification.model.Measurement;
 import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
+import org.ihorzima.telegram_notification.service.MeasurementService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,14 +16,6 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @EnableConfigurationProperties(TelegramBotProperties.class)
 public class TelegramBotConfig {
 
-    private final TelegramBotProperties telegramBotProperties;
-    private final AdminChatIdHolder adminChatIdHolder;
-
-    public TelegramBotConfig(TelegramBotProperties telegramBotProperties, AdminChatIdHolder adminChatIdHolder) {
-        this.telegramBotProperties = telegramBotProperties;
-        this.adminChatIdHolder = adminChatIdHolder;
-    }
-
     @Bean
     public TelegramBotsApi telegramBotsApi(TelegramBot telegramBot) throws TelegramApiException {
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -29,7 +24,8 @@ public class TelegramBotConfig {
     }
 
     @Bean
-    public TelegramBot myTelegramBot(AccountLocalRepository accountRepository) {
-        return new TelegramBot(telegramBotProperties.getBotToken() , accountRepository, adminChatIdHolder, telegramBotProperties);
+    public TelegramBot myTelegramBot(AccountLocalRepository accountRepository,
+                                     TelegramBotProperties telegramBotProperties) {
+        return new TelegramBot(telegramBotProperties.getToken(), accountRepository, telegramBotProperties);
     }
 }

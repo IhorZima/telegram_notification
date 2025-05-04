@@ -5,23 +5,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.ihorzima.telegram_notification.bot.TelegramBot;
 import org.ihorzima.telegram_notification.builder.PdfFileBuilder;
-import org.ihorzima.telegram_notification.config.TelegramBotConfig;
 import org.ihorzima.telegram_notification.config.TelegramBotProperties;
 import org.ihorzima.telegram_notification.model.Measurement;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
-@Component
 @EnableConfigurationProperties(TelegramBotProperties.class)
 public class MeasurementService {
 
-    private final TelegramBotProperties telegramBotProperties;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     private final TelegramBot telegramBot;
     private final PdfFileBuilder<Measurement> measurementPdfFileBuilder;
 
@@ -42,10 +40,14 @@ public class MeasurementService {
             byte[] pdfFileContent = measurementPdfFileBuilder.build(measurement);
             String accountChatId = measurement.getTelegramId();
             log.info("Sending measurement to {}", accountChatId);
-            telegramBot.sendFile(accountChatId, telegramBotProperties.getPdfFileName() , pdfFileContent);
+            telegramBot.sendFile(accountChatId, buildPdfFileName(landId), pdfFileContent);
             log.info("Measurement is sent to {}", measurement.getTelegramId());
         } catch (Exception ex) {
             log.error("Could not process measurement", ex);
         }
+    }
+
+    private String buildPdfFileName(String landId) {
+        return landId + "_" + LocalDateTime.now().format(DATE_TIME_FORMATTER) + ".pdf";
     }
 }

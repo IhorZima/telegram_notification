@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
+import java.text.DecimalFormat;
 import java.util.stream.Stream;
 
-@Component
 public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
 
     public static final String FONT_PATH = "fonts/Roboto/Roboto-Light.ttf";
@@ -47,7 +47,10 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
     }
 
     private void amountToBePaidParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
-        Paragraph paragraph4 = new Paragraph("Сума до сплати становить - " + measurement.getToBePaid() + "грн.", paragraphTitleFont);
+        DecimalFormat decimalFormat = new DecimalFormat("0.00");
+        String formattedToBePaid = decimalFormat.format(Double.parseDouble(measurement.getToBePaid()));
+
+        Paragraph paragraph4 = new Paragraph("Сума до сплати становить: " + formattedToBePaid + " грн.", paragraphTitleFont);
         paragraph4.setSpacingBefore(10);
         document.add(paragraph4);
 
@@ -78,7 +81,7 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         addCell(table3, "Денні останні", infoFont);
         addCell(table3, "Нічні поточні", infoFont);
         addCell(table3, "Нічні останні", infoFont);
-        addCell(table3, "Разом до сплати", infoFont);
+        addCell(table3, "Разом до сплати (грн)", infoFont);
 
         addCell(table3, measurement.getCurrentDay(), infoFont);
         addCell(table3, measurement.getLastPaymentIndicatorsDaily(), infoFont);
@@ -122,7 +125,7 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         table2.setWidthPercentage(100);
 
         PdfPCell leftCell1 = new PdfPCell(new Phrase("Від СТ “Злагода”", paragraphTitleFont));
-        PdfPCell rightCell1 = new PdfPCell(new Phrase("місяць формування рахунку", paragraphTitleFont));
+        PdfPCell rightCell1 = new PdfPCell(new Phrase("Місяць формування рахунку", paragraphTitleFont));
 
         PdfPCell leftCell2 = new PdfPCell(new Phrase("5 територія", infoFont));
         PdfPCell rightCell2 = new PdfPCell(new Phrase(measurement.getCurrentDate(), infoFont));

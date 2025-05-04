@@ -2,14 +2,18 @@ package org.ihorzima.telegram_notification.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
-@ConfigurationProperties(prefix = "telegram")
-@EnableConfigurationProperties(TelegramBotProperties.class)
+@Configuration
+@ConfigurationProperties(prefix = "telegram.bot")
 public class TelegramBotProperties {
-    private String botToken;
+
+    private String token;
+    private String userName;
     private String adminPassphrase;
-    private String botUserName;
-    private String pdfFileName;
+    private Set<String> AdminChatIds = new HashSet<>();
 }

@@ -1,12 +1,10 @@
 package org.ihorzima.telegram_notification.bot;
 
 import lombok.extern.slf4j.Slf4j;
-import org.ihorzima.telegram_notification.config.AdminChatIdHolder;
 import org.ihorzima.telegram_notification.config.TelegramBotProperties;
 import org.ihorzima.telegram_notification.model.Account;
 import org.ihorzima.telegram_notification.repository.AccountLocalRepository;
 import org.ihorzima.telegram_notification.util.InlineAccountCache;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
@@ -29,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,19 +39,17 @@ public class TelegramBot extends TelegramLongPollingBot {
     private static final int INLINE_QUERY_LIMIT = 50;
 
     private final AccountLocalRepository accountRepository;
-    private final AdminChatIdHolder adminChatIdHolder;
     private final TelegramBotProperties telegramBotProperties;
 
-    public TelegramBot(String botToken, AccountLocalRepository accountRepository, AdminChatIdHolder adminChatIdHolderConfig, TelegramBotProperties telegramBotProperties) {
+    public TelegramBot(String botToken, AccountLocalRepository accountRepository, TelegramBotProperties telegramBotProperties) {
         super(botToken);
         this.accountRepository = accountRepository;
-        this.adminChatIdHolder = adminChatIdHolderConfig;
         this.telegramBotProperties = telegramBotProperties;
     }
 
     @Override
     public String getBotUsername() {
-        return telegramBotProperties.getBotUserName();
+        return telegramBotProperties.getUserName();
     }
 
     @Override
@@ -79,41 +76,63 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void handleMessage(Message message) throws TelegramApiException {
-        String chatId = message.getChatId().toString();
+        String originalChatId = message.getChatId().toString();
         String receivedText = message.getText();
 
         if (receivedText.equals("/start")) {
-            createButton(chatId);
+            createButton(originalChatId);
+        }
+
+        if (receivedText.equals("/admin " + telegramBotProperties.getAdminPassphrase())) {
+            handleAdminRegisterRequest(originalChatId);
         } else {
-            Matcher matcher = RECEIVED_LAND_ID_PATTERN.matcher(receivedText);
+            handleSelectedLandRequest(receivedText, originalChatId);
+        }
+    }
 
-            if (matcher.find()) {
-                log.info("Found received land ID: {}", matcher.group());
-                String landId = matcher.group().trim();
-                SendMessage messageForAdmin = new SendMessage();
-                if (!adminChatIdHolder.getListChatId().stream().findFirst().isPresent()) {
-                    log.info("Admin chat id is null. Sending admin chat id to bot");
-                    return;
-                }
-                messageForAdmin.setChatId(adminChatIdHolder.getListChatId().stream().findFirst().get());
-                messageForAdmin.setText("*Ділянка:* `" + landId + "`\n*ChatId:* `" + chatId + "`");
+    private void handleSelectedLandRequest(String receivedText, String originalChatId) throws TelegramApiException {
+        Matcher matcher = RECEIVED_LAND_ID_PATTERN.matcher(receivedText);
 
-                messageForAdmin.setParseMode(ParseMode.MARKDOWNV2);
+        if (matcher.find()) {
+            String landId = matcher.group().trim();
+            log.info("Found received landId: {}", landId);
 
-                execute(messageForAdmin);
+            Set<String> adminChatIds = telegramBotProperties.getAdminChatIds();
+
+            if (adminChatIds.isEmpty()) {
+                log.warn("No admin chatIds found for chatId: {}", originalChatId);
+                return;
             }
 
-            if (receivedText.equals("/admin " + telegramBotProperties.getAdminPassphrase())) {
-                adminChatIdHolder.getListChatId().add(message.getChatId().toString());
-                if (adminChatIdHolder.getListChatId().contains(message.getChatId().toString())) {
-                    log.info("Found admin chat ID: {}", message.getChatId().toString());
-                }
-                SendMessage messageForAdmin = new SendMessage();
-                messageForAdmin.setChatId(message.getChatId().toString());
-                messageForAdmin.setText(message.getChatId().toString());
-                execute(messageForAdmin);
+            for (String adminChatId : adminChatIds) {
+                String text = "*Ділянка:* `" + landId + "`\n*chatId:* `" + originalChatId + "`";
+                SendMessage messageToAdmin = buildTextMessageForChatId(adminChatId, text);
+                messageToAdmin.setParseMode(ParseMode.MARKDOWNV2);
+                execute(messageToAdmin);
             }
         }
+    }
+
+    private void handleAdminRegisterRequest(String originalChatId) throws TelegramApiException {
+        Set<String> adminChatIds = telegramBotProperties.getAdminChatIds();
+
+        String adminResponseMessage;
+        if (adminChatIds.contains(originalChatId)) {
+            log.info("Admin with chatId: {} is already registered", originalChatId);
+            adminResponseMessage = "Користувач вже зареєстрований як адмін. Твій chatId: " + originalChatId;
+        } else {
+            adminChatIds.add(originalChatId);
+            log.info("User with chatId: {} successfully registered", originalChatId);
+            adminResponseMessage = "Користувач успішно зареєстрований як адмін. Твій chatId: " + originalChatId;
+        }
+        execute(buildTextMessageForChatId(originalChatId, adminResponseMessage));
+    }
+
+    private SendMessage buildTextMessageForChatId(String adminChatId, String message) {
+        SendMessage messageForAdmin = new SendMessage();
+        messageForAdmin.setChatId(adminChatId);
+        messageForAdmin.setText(message);
+        return messageForAdmin;
     }
 
     public void sendFile(String chatId, String fileName, byte[] fileContent) throws TelegramApiException {
@@ -231,10 +250,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void sendTextMessage(String chatId, String text) throws TelegramApiException {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(text);
-
-        execute(message);
+        execute(buildTextMessageForChatId(chatId, text));
     }
 }
