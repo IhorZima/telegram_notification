@@ -32,12 +32,20 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
             Font paragraphTitleFont = new Font(baseFont, 12, Font.BOLD, Color.BLACK);
             Font infoFont = new Font(baseFont, 10, Font.NORMAL, Color.BLACK);
 
+            Font infoFontRed = new Font(baseFont, 10, Font.BOLD, Color.RED);
+
             titleConfigure(font, document);
             dateLocationNameSecondNameLandParagraph(measurement, paragraphTitleFont, infoFont, document);
             configurePaymentDetailsParagraph(paragraphTitleFont, document, infoFont);
             tariffCalculationParagraph(measurement, paragraphTitleFont, document, infoFont);
             amountToBePaidParagraph(measurement, paragraphTitleFont, document, infoFont);
 
+            Paragraph paragraph7 = new Paragraph("Рахунок дійсний до кінця поточного місяця!\n" +
+                    "У разі не сплати цього рахунку до кінця поточного місяця , Вам буде нараховано новий рахунок.\n" +
+                    "Цей рахунок перестає діяти!", infoFontRed);
+            paragraph7.setSpacingBefore(5);
+
+            document.add(paragraph7);
             document.addHeader("header", "header");
             document.close();
             return out.toByteArray();
@@ -64,6 +72,7 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
                 measurement.getNameSecondName() +
                 ", денні " + measurement.getCurrentDay() + "-" + measurement.getLastPaymentIndicatorsDaily() + ", нічні " +
                 measurement.getCurrentNight() + "-" + measurement.getLastPaymentIndicatorsNight(), infoFont);
+
         paragraph6.setSpacingBefore(10);
         document.add(paragraph6);
     }

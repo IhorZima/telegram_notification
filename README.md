@@ -3,7 +3,7 @@ App to send notification to user via telegram bot.
 
 # How to install
 
-1. Copy AppScript google spreadsheet files from app_scripts directory. (How to use google app scripts: https://developers.google.com/apps-script/guides/sheets/functions) 
+1. Copy AppScript google spreadsheet files from `app_scripts` directory. (How to use google app scripts: https://developers.google.com/apps-script/guides/sheets/functions) 
 2. Replace 
 
 ```var url = "http://<REPLACE_BY_YOUR_IP>:<YOUR_PORT>/";``` 

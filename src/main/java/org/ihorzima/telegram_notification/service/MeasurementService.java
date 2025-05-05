@@ -2,6 +2,7 @@ package org.ihorzima.telegram_notification.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.ihorzima.telegram_notification.bot.TelegramBot;
 import org.ihorzima.telegram_notification.builder.PdfFileBuilder;
@@ -24,8 +25,15 @@ public class MeasurementService {
     private final PdfFileBuilder<Measurement> measurementPdfFileBuilder;
 
     public void processMeasurements(List<Measurement> measurements) {
-        log.info("Processing {} measurements", measurements.size());
-        measurements.forEach(this::processMeasurement);
+        log.info("Received {} measurements", measurements.size());
+
+        List<Measurement> validMeasurements = measurements.stream()
+                .filter(measurement -> StringUtils.isNotBlank(measurement.getLandId()))
+                .toList();
+
+        log.info("Going to process {} valid measurements", validMeasurements.size());
+
+        validMeasurements.forEach(this::processMeasurement);
         log.info("Processed {} measurements", measurements.size());
     }
 
@@ -48,6 +56,7 @@ public class MeasurementService {
     }
 
     private String buildPdfFileName(String landId) {
-        return landId + "_" + LocalDateTime.now().format(DATE_TIME_FORMATTER) + ".pdf";
+        String enhancedLandId = landId.replace("/", "_");
+        return "рахунок_" + enhancedLandId + "_" + LocalDateTime.now().format(DATE_TIME_FORMATTER) + ".pdf";
     }
 }

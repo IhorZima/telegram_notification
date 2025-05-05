@@ -81,9 +81,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         if (receivedText.equals("/start")) {
             createButton(originalChatId);
-        }
-
-        if (receivedText.equals("/admin " + telegramBotProperties.getAdminPassphrase())) {
+        } else if (receivedText.equals("/admin " + telegramBotProperties.getAdminPassphrase())) {
             handleAdminRegisterRequest(originalChatId);
         } else {
             handleSelectedLandRequest(receivedText, originalChatId);
@@ -91,21 +89,28 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void handleSelectedLandRequest(String receivedText, String originalChatId) throws TelegramApiException {
+        Set<String> adminChatIds = telegramBotProperties.getAdminChatIds();
+
+        if (adminChatIds.isEmpty()) {
+            log.warn("No admin chatIds found for chatId: {}", originalChatId);
+            return;
+        }
+
         Matcher matcher = RECEIVED_LAND_ID_PATTERN.matcher(receivedText);
 
         if (matcher.find()) {
             String landId = matcher.group().trim();
             log.info("Found received landId: {}", landId);
 
-            Set<String> adminChatIds = telegramBotProperties.getAdminChatIds();
-
-            if (adminChatIds.isEmpty()) {
-                log.warn("No admin chatIds found for chatId: {}", originalChatId);
-                return;
-            }
-
             for (String adminChatId : adminChatIds) {
                 String text = "*Ділянка:* `" + landId + "`\n*chatId:* `" + originalChatId + "`";
+                SendMessage messageToAdmin = buildTextMessageForChatId(adminChatId, text);
+                messageToAdmin.setParseMode(ParseMode.MARKDOWNV2);
+                execute(messageToAdmin);
+            }
+        } else {
+            for (String adminChatId : adminChatIds) {
+                String text = "*Ділянка:* `" + receivedText + "`\n*chatId:* `" + originalChatId + "`";
                 SendMessage messageToAdmin = buildTextMessageForChatId(adminChatId, text);
                 messageToAdmin.setParseMode(ParseMode.MARKDOWNV2);
                 execute(messageToAdmin);
@@ -244,7 +249,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
 
-    String escapeMarkdownV2(String text) {
+    private String escapeMarkdownV2(String text) {
         if (text == null) return "";
         return text.replaceAll("([_*.\\[\\]()~`>#+\\-=|{}!])", "\\\\$1");
     }
