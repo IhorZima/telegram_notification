@@ -7,35 +7,44 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.ServiceAccountCredentials;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.ihorzima.telegram_notification.model.Measurement;
 
 import java.io.FileInputStream;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class GoogleSheetsReader {
+@Slf4j
+@RequiredArgsConstructor
+public class MeasurementsGoogleSheetReader {
     private static final String APPLICATION_NAME = "My Spring App";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String SPREADSHEET_ID = "19h7uFLJY_BogjLlwyHtz7SZJl5jEA-GIlkwX9ipDth4";
-    private static final String RANGE = "Зведені!A1:W10";
+    private static final String RANGE = "Зведені!A2:W10";
 
-    public void main(String[] args) throws Exception {
+    private final String googleAuthKeyPath;
+
+    public List<Measurement> getMeasurements() throws Exception {
         Sheets sheetsService = getSheetsService();
         ValueRange response = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, RANGE)
                 .execute();
 
         List<List<Object>> values = response.getValues();
+
         if (values == null || values.isEmpty()) {
-            System.out.println("No data found.");
+            log.info("No measurements found");
+            return Collections.emptyList();
         }
 
-        getMeasurements(response);
+        return toMeasurements(response);
     }
 
 
     private Sheets getSheetsService() throws Exception {
-        FileInputStream serviceAccountStream = new FileInputStream("src\\main\\resources\\credentials\\google-sheet-auth.json");
+        FileInputStream serviceAccountStream = new FileInputStream(googleAuthKeyPath);
 
         var credentials = ServiceAccountCredentials.fromStream(serviceAccountStream)
                 .createScoped(List.of("https://www.googleapis.com/auth/spreadsheets.readonly"));
@@ -47,7 +56,7 @@ public class GoogleSheetsReader {
         ).setApplicationName(APPLICATION_NAME).build();
     }
 
-    public List<Measurement> getMeasurements(ValueRange response) {
+    public List<Measurement> toMeasurements(ValueRange response) {
         List<Measurement> measurements = new LinkedList<>();
         List<List<Object>> values = response.getValues();
 
@@ -75,7 +84,6 @@ public class GoogleSheetsReader {
 
             measurements.add(m);
         }
-        measurements.forEach(System.out::println);
         return measurements;
     }
 

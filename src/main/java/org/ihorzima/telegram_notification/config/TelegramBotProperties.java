@@ -15,5 +15,5 @@ public class TelegramBotProperties {
     private String token;
     private String userName;
     private String adminPassphrase;
-    private Set<String> AdminChatIds = new HashSet<>();
+    private Set<String> adminChatIds = new HashSet<>();
 }

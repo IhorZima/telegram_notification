@@ -55,12 +55,11 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
     }
 
     private void amountToBePaidParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
-        String formattedToBePaid = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getToBePaid()));
-        String currentDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentDay()));
-        String previousDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousDay()));
-        String currentNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentNight()));
-        String previousNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousNight()));
-
+        String formattedToBePaid = formatNumber(measurement.getToBePaid());
+        String currentDay = formatNumber(measurement.getCurrentDay());
+        String previousDay = formatNumber(measurement.getPreviousDay());
+        String currentNight = formatNumber(measurement.getCurrentNight());
+        String previousNight = formatNumber(measurement.getPreviousNight());
 
         Paragraph paragraph4 = new Paragraph("Сума до сплати становить: " + formattedToBePaid + " грн.", paragraphTitleFont);
         paragraph4.setSpacingBefore(10);
@@ -86,12 +85,11 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         paragraph3.setSpacingBefore(5);
         document.add(paragraph3);
 
-        String currentDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentDay()));
-        String previousDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousDay()));
-        String currentNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentNight()));
-        String previousNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousNight()));
-        String toBePaid = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getToBePaid()));
-
+        String currentDay = formatNumber(measurement.getCurrentDay());
+        String previousDay = formatNumber(measurement.getPreviousDay());
+        String currentNight = formatNumber(measurement.getCurrentNight());
+        String previousNight = formatNumber(measurement.getPreviousNight());
+        String toBePaid = formatNumber(measurement.getToBePaid());
 
         PdfPTable table3 = new PdfPTable(5);
         table3.setWidthPercentage(100);
@@ -173,6 +171,20 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         document.add(new Paragraph(measurement.getStreet(), infoFont));
         document.add(new Paragraph("Ділянка", paragraphTitleFont));
         document.add(new Paragraph(measurement.getLandId(), infoFont));
+    }
+
+    private String formatNumber(String input) {
+        // Step 1: Remove space (thousands separator)
+        input = input.replace(" ", "");
+
+        // Step 2: Replace the comma with a dot for decimal processing
+        input = input.replace(',', '.');
+
+        // Step 3: Parse it to double
+        double value = Double.parseDouble(input);
+
+        // Step 4: Format it with the DecimalFormat
+        return DECIMAL_FORMAT.format(value);
     }
 
     private void titleConfigure(Font font, Document document) {
