@@ -15,9 +15,9 @@ public class Measurement {
     private String street;
     private String previousIndex;
     private String previousDate;
+    private String currentDate;
     private String previousNight;
     private String previousDay;
-    private String currentDate;
     private String currentNight;
     private String currentDay;
     private String paymentDate;
@@ -30,5 +30,5 @@ public class Measurement {
     private String dailyDebtForTheCurrentPeriodUAH;
     private String toBePaid;
     private String telegramId;
-
+    private String state;
 }

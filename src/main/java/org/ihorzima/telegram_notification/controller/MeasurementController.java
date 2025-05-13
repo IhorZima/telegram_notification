@@ -23,4 +23,9 @@ public class MeasurementController {
         measurementService.processMeasurements(measurements);
         return "received data for measurement sheet successfully";
     }
+
+    @PostMapping
+    public void measurementStart() {
+
+    }
 }

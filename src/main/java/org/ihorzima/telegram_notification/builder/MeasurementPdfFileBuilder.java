@@ -8,7 +8,6 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import org.ihorzima.telegram_notification.model.Measurement;
-import org.springframework.stereotype.Component;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -18,6 +17,7 @@ import java.util.stream.Stream;
 public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
 
     public static final String FONT_PATH = "fonts/Roboto/Roboto-Light.ttf";
+    private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
 
     @Override
     public byte[] build(Measurement measurement) {
@@ -55,8 +55,12 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
     }
 
     private void amountToBePaidParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
-        DecimalFormat decimalFormat = new DecimalFormat("0.00");
-        String formattedToBePaid = decimalFormat.format(Double.parseDouble(measurement.getToBePaid()));
+        String formattedToBePaid = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getToBePaid()));
+        String currentDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentDay()));
+        String previousDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousDay()));
+        String currentNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentNight()));
+        String previousNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousNight()));
+
 
         Paragraph paragraph4 = new Paragraph("Сума до сплати становить: " + formattedToBePaid + " грн.", paragraphTitleFont);
         paragraph4.setSpacingBefore(10);
@@ -70,8 +74,8 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
                 measurement.getLandId() +
                 ", " +
                 measurement.getNameSecondName() +
-                ", денні " + measurement.getCurrentDay() + "-" + measurement.getLastPaymentIndicatorsDaily() + ", нічні " +
-                measurement.getCurrentNight() + "-" + measurement.getLastPaymentIndicatorsNight(), infoFont);
+                ", денні " + currentDay + "-" + previousDay + ", нічні " +
+                currentNight + "-" + previousNight , infoFont);
 
         paragraph6.setSpacingBefore(10);
         document.add(paragraph6);
@@ -82,21 +86,28 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         paragraph3.setSpacingBefore(5);
         document.add(paragraph3);
 
+        String currentDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentDay()));
+        String previousDay = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousDay()));
+        String currentNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getCurrentNight()));
+        String previousNight = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getPreviousNight()));
+        String toBePaid = DECIMAL_FORMAT.format(Double.parseDouble(measurement.getToBePaid()));
+
+
         PdfPTable table3 = new PdfPTable(5);
         table3.setWidthPercentage(100);
         table3.setSpacingBefore(20);
 
         addCell(table3, "Денні поточні", infoFont);
-        addCell(table3, "Денні останні", infoFont);
+        addCell(table3, "Денні попередні", infoFont);
         addCell(table3, "Нічні поточні", infoFont);
-        addCell(table3, "Нічні останні", infoFont);
+        addCell(table3, "Нічні попередні", infoFont);
         addCell(table3, "Разом до сплати (грн)", infoFont);
 
-        addCell(table3, measurement.getCurrentDay(), infoFont);
-        addCell(table3, measurement.getLastPaymentIndicatorsDaily(), infoFont);
-        addCell(table3, measurement.getCurrentNight(), infoFont);
-        addCell(table3, measurement.getLastPaymentIndicatorsNight(), infoFont);
-        addCell(table3, measurement.getToBePaid(), infoFont);
+        addCell(table3, currentDay, infoFont);
+        addCell(table3, previousDay, infoFont);
+        addCell(table3, currentNight, infoFont);
+        addCell(table3, previousNight, infoFont);
+        addCell(table3, toBePaid, infoFont);
 
         document.add(table3);
     }
@@ -115,7 +126,7 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
 
         document.add(paragraph2);
 
-        addCell(table, "Счет", infoFont);
+        addCell(table, "Рахунок", infoFont);
         addCell(table, "UA603052990000026000026247033", infoFont);
         addCell(table, "МФО", infoFont);
         addCell(table, "305299", infoFont);
