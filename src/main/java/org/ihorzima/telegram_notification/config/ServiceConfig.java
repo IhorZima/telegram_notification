@@ -17,6 +17,9 @@ public class ServiceConfig {
     @Value("${google.api.auth.key.path:null}")
     private String authKeyPath;
 
+    @Value("${google.spreadsheet.id:null}")
+    private String googleSpreadsheetId;
+
     @Bean
     public AccountLocalRepository accountLocalRepository() {
         return new AccountLocalRepository();
@@ -34,6 +37,6 @@ public class ServiceConfig {
 
     @Bean
     public MeasurementsGoogleSheetReader googleSheetsReader() {
-        return new MeasurementsGoogleSheetReader(authKeyPath);
+        return new MeasurementsGoogleSheetReader(authKeyPath, googleSpreadsheetId);
     }
 }
