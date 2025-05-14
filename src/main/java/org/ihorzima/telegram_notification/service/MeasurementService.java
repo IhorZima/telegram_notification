@@ -20,29 +20,36 @@ import java.util.List;
 public class MeasurementService {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String SEND_MEASUREMENT_STATE_COLUMN_VALUE = "TRUE";
 
     private final TelegramBot telegramBot;
     private final PdfFileBuilder<Measurement> measurementPdfFileBuilder;
 
-    public void processMeasurements(List<Measurement> measurements) {
+    public boolean processMeasurements(List<Measurement> measurements) {
         log.info("Received {} measurements", measurements.size());
 
         List<Measurement> validMeasurements = measurements.stream()
                 .filter(measurement -> StringUtils.isNotBlank(measurement.getLandId()))
+                .filter(measurement -> SEND_MEASUREMENT_STATE_COLUMN_VALUE.equals(measurement.getState()))
                 .toList();
 
-        log.info("Going to process {} valid measurements", validMeasurements.size());
+        log.info("Going to process {} measurements", validMeasurements.size());
 
-        validMeasurements.forEach(this::processMeasurement);
-        log.info("Processed {} measurements", measurements.size());
+        List<Boolean> processedMeasurementResults = validMeasurements.stream().map(this::processMeasurement).toList();
+
+        long successfullyProcessed = processedMeasurementResults.stream().filter(bool -> bool).count();
+
+        log.info("Processed {} measurements", successfullyProcessed);
+
+        return processedMeasurementResults.stream().allMatch(bool -> bool);
     }
 
-    private void processMeasurement(Measurement measurement) {
+    private boolean processMeasurement(Measurement measurement) {
         try {
             String landId = measurement.getLandId();
             if (Strings.isEmpty(measurement.getTelegramId())) {
                 log.error("Telegram chatId for a landId {} not found", landId);
-                return;
+                return false;
             }
 
             byte[] pdfFileContent = measurementPdfFileBuilder.build(measurement);
@@ -50,8 +57,10 @@ public class MeasurementService {
             log.info("Sending measurement to {}", accountChatId);
             telegramBot.sendFile(accountChatId, buildPdfFileName(landId), pdfFileContent);
             log.info("Measurement is sent to {}", measurement.getTelegramId());
+            return true;
         } catch (Exception ex) {
             log.error("Could not process measurement", ex);
+            return false;
         }
     }
 

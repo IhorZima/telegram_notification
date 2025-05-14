@@ -1,13 +1,13 @@
 package org.ihorzima.telegram_notification;
 
-import org.springframework.boot.SpringApplication;
+import javafx.application.Application;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class TelegramNotificationApp {
 
     public static void main(String[] args) {
-        SpringApplication.run(TelegramNotificationApp.class, args);
+        Application.launch(JavaFxApp.class, args);
     }
-
 }
+
