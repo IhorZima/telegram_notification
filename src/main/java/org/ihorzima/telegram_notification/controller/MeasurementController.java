@@ -34,17 +34,11 @@ public class MeasurementController {
     @ResponseStatus(HttpStatus.OK)
     public String retrieveAndProcessMeasurements() {
         try {
-            List<Measurement> measurements = measurementsGoogleSheetReader.getMeasurements();
-
-            List<Measurement> measurementsToProcess = measurements.stream()
-                    .toList();
+            List<Measurement> measurementsToProcess = measurementsGoogleSheetReader.getMeasurements();
 
             log.info("Going to process {} measurements", measurementsToProcess.size());
             boolean allProcessed = measurementService.processMeasurements(measurementsToProcess);
-            if (allProcessed) {
-                return "All measurements has been processed!";
-            }
-            return "Some measurements failed to process";
+            return allProcessed ? "All measurements has been processed!" : "Some measurements failed to process";
         } catch (Exception e) {
             return "Something went wrong: " + e.getMessage();
         }

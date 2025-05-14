@@ -20,6 +20,7 @@ import java.util.List;
 public class MeasurementService {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String SEND_MEASUREMENT_STATE_COLUMN_VALUE = "TRUE";
 
     private final TelegramBot telegramBot;
     private final PdfFileBuilder<Measurement> measurementPdfFileBuilder;
@@ -29,7 +30,7 @@ public class MeasurementService {
 
         List<Measurement> validMeasurements = measurements.stream()
                 .filter(measurement -> StringUtils.isNotBlank(measurement.getLandId()))
-                .filter(measurement -> "TRUE".equals(measurement.getState()))
+                .filter(measurement -> SEND_MEASUREMENT_STATE_COLUMN_VALUE.equals(measurement.getState()))
                 .toList();
 
         log.info("Going to process {} measurements", validMeasurements.size());
