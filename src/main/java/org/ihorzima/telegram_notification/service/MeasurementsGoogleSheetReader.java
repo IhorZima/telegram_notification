@@ -44,6 +44,7 @@ public class MeasurementsGoogleSheetReader {
 
 
     private Sheets getSheetsService() throws Exception {
+        log.info("Getting Sheets Service from Google Sheets API key: {}", googleAuthKeyPath);
         FileInputStream serviceAccountStream = new FileInputStream(googleAuthKeyPath);
 
         var credentials = ServiceAccountCredentials.fromStream(serviceAccountStream)

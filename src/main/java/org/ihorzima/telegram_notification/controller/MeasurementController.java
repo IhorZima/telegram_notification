@@ -33,6 +33,7 @@ public class MeasurementController {
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public String retrieveAndProcessMeasurements() {
+        log.info("Going to retrieve measurement data");
         try {
             List<Measurement> measurementsToProcess = measurementsGoogleSheetReader.getMeasurements();
 
@@ -40,6 +41,7 @@ public class MeasurementController {
             boolean allProcessed = measurementService.processMeasurements(measurementsToProcess);
             return allProcessed ? "All measurements has been processed!" : "Some measurements failed to process";
         } catch (Exception e) {
+            log.error("Failed to process measurements", e);
             return "Something went wrong: " + e.getMessage();
         }
     }
