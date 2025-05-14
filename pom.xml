@@ -31,12 +31,19 @@
         <google-api-services-sheets.version>v4-rev20250415-2.0.0</google-api-services-sheets.version>
         <google-auth-library-oauth2-http.version>1.18.0</google-auth-library-oauth2-http.version>
         <google-api-client.version>2.0.0</google-api-client.version>
+        <javafx.version>20</javafx.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
         </dependency>
 
         <dependency>
@@ -74,6 +81,7 @@
             <version>${google-auth-library-oauth2-http.version}</version>
         </dependency>
 
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -90,10 +98,19 @@
 
     <build>
         <plugins>
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>your.package.TelegramNotificationApp</mainClass>
+                </configuration>
             </plugin>
+
         </plugins>
     </build>
 

@@ -174,16 +174,11 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
     }
 
     private String formatNumber(String input) {
-        // Step 1: Remove space (thousands separator)
         input = input.replace(" ", "");
-
-        // Step 2: Replace the comma with a dot for decimal processing
         input = input.replace(',', '.');
 
-        // Step 3: Parse it to double
         double value = Double.parseDouble(input);
 
-        // Step 4: Format it with the DecimalFormat
         return DECIMAL_FORMAT.format(value);
     }
 
