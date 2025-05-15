@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Обробка квитанцій</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #f0f8ff;
+            background-image: repeating-linear-gradient(
+                    -45deg,
+                    rgba(0, 128, 255, 0.05) 0,
+                    rgba(0, 128, 255, 0.05) 100px,
+                    transparent 100px,
+                    transparent 200px
+            ),
+            repeating-linear-gradient(
+                    -45deg,
+                    transparent 0,
+                    transparent 100px,
+                    rgba(0, 128, 255, 0.05) 100px,
+                    rgba(0, 128, 255, 0.05) 200px
+            );
+        }
+
+        .container {
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        .send-button {
+            font-size: 24px;
+            padding: 20px 40px;
+            border-radius: 50px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 20px;
+        }
+
+        .send-button:hover {
+            background-color: #0056b3;
+        }
+
+        .exit-button {
+            font-size: 16px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        .exit-button:hover {
+            background-color: #a71d2a;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            font-size: 48px;
+            color: rgba(0, 0, 255, 0.05);
+            transform: rotate(-45deg);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+    <script>
+        function processMeasurements() {
+            fetch("/measurement")
+                .then(response => response.text())
+                .then(result => alert(result))
+                .catch(error => alert("Помилка: " + error));
+        }
+
+        function shutdown() {
+            fetch("/measurement/shutdown", {method: "POST"})
+                .then(() => alert("Програму завершено"))
+                .catch(err => alert("Помилка завершення: " + err));
+        }
+    </script>
+</head>
+<body>
+<div class="watermark">Злагода-Злагода Злагода-Злагода Злагода-Злагода Злагода-Злагода</div>
+<div class="container content">
+    <h1>Обробка квитанцій</h1>
+    <button class="send-button" onclick="processMeasurements()">ЗРОБИТИ КРАСИВО</button>
+    <br/>
+    <button class="exit-button" onclick="shutdown()">Завершити роботу</button>
+</div>
+</body>
+</html>
