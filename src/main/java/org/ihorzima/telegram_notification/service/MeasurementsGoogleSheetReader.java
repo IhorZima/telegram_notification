@@ -21,15 +21,15 @@ import java.util.List;
 public class MeasurementsGoogleSheetReader {
     private static final String APPLICATION_NAME = "My Spring App";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private static final String RANGE = "Зведені!A2:W10";
 
     private final String googleAuthKeyPath;
-    private final String spreedSheetId;
+    private final String spreadSheetId;
+    private final String spreadSheetFilter;
 
     public List<Measurement> getMeasurements() throws Exception {
         Sheets sheetsService = getSheetsService();
         ValueRange response = sheetsService.spreadsheets().values()
-                .get(spreedSheetId, RANGE)
+                .get(spreadSheetId, spreadSheetFilter)
                 .execute();
 
         List<List<Object>> values = response.getValues();

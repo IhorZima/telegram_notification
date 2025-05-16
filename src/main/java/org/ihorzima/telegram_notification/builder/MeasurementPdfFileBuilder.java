@@ -174,7 +174,7 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
     }
 
     private String formatNumber(String input) {
-        input = input.replace(" ", "");
+        input = input.replaceAll("[\\p{Zs}\\s]+", "");
         input = input.replace(',', '.');
 
         double value = Double.parseDouble(input);

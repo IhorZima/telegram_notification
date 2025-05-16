@@ -20,6 +20,9 @@ public class ServiceConfig {
     @Value("${google.spreadsheet.id:null}")
     private String googleSpreadsheetId;
 
+    @Value("${google.spreadsheet.filter:null}")
+    private String googleSpreadsheetFilter;
+
     @Bean
     public AccountLocalRepository accountLocalRepository() {
         return new AccountLocalRepository();
@@ -37,6 +40,6 @@ public class ServiceConfig {
 
     @Bean
     public MeasurementsGoogleSheetReader googleSheetsReader() {
-        return new MeasurementsGoogleSheetReader(authKeyPath, googleSpreadsheetId);
+        return new MeasurementsGoogleSheetReader(authKeyPath, googleSpreadsheetId, googleSpreadsheetFilter);
     }
 }
