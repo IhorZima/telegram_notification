@@ -38,24 +38,26 @@
             border: none;
             cursor: pointer;
             margin: 20px;
+            transition: transform 0.5s ease-in-out;
         }
 
-        .send-button:hover {
-            background-color: #0056b3;
+        .send-button.loading {
+            animation: rotate 1s infinite linear;
         }
 
-        .exit-button {
-            font-size: 16px;
-            padding: 10px 20px;
-            background-color: #dc3545;
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success {
+            margin-top: 30px;
+            font-size: 40px;
             color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 10px;
-        }
-
-        .exit-button:hover {
-            background-color: #a71d2a;
+            background-color: #28a745;
+            padding: 20px;
+            border-radius: 20px;
+            display: inline-block;
         }
 
         .watermark {
@@ -79,16 +81,25 @@
     </style>
     <script>
         function processMeasurements() {
+            const btn = document.getElementById("sendBtn");
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = "";
+            btn.classList.add("loading");
+
             fetch("/measurement")
                 .then(response => response.text())
-                .then(result => alert(result))
-                .catch(error => alert("Помилка: " + error));
-        }
-
-        function shutdown() {
-            fetch("/measurement/shutdown", {method: "POST"})
-                .then(() => alert("Програму завершено"))
-                .catch(err => alert("Помилка завершення: " + err));
+                .then(result => {
+                    btn.classList.remove("loading");
+                    if (result.includes("All measurements has been processed")) {
+                        resultDiv.innerHTML = "<div class='success'>👍 Успішно!</div>";
+                    } else {
+                        alert(result);
+                    }
+                })
+                .catch(error => {
+                    btn.classList.remove("loading");
+                    alert("Помилка: " + error);
+                });
         }
     </script>
 </head>
@@ -96,9 +107,8 @@
 <div class="watermark">Злагода-Злагода Злагода-Злагода Злагода-Злагода Злагода-Злагода</div>
 <div class="container content">
     <h1>Обробка квитанцій</h1>
-    <button class="send-button" onclick="processMeasurements()">ЗРОБИТИ КРАСИВО</button>
-    <br/>
-    <button class="exit-button" onclick="shutdown()">Завершити роботу</button>
+    <button id="sendBtn" class="send-button" onclick="processMeasurements()">Надіслати квитанції</button>
+    <div id="result"></div>
 </div>
 </body>
 </html>
