@@ -45,17 +45,4 @@ public class MeasurementController {
             return "Something went wrong: " + e.getMessage();
         }
     }
-
-    @PostMapping("/shutdown")
-    public void shutdown() {
-        log.info("Shutting down application...");
-        Thread shutdownThread = new Thread(() -> {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException ignored) {}
-            System.exit(0);
-        });
-        shutdownThread.setDaemon(false);
-        shutdownThread.start();
-    }
 }
