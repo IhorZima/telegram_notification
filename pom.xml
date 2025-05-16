@@ -11,7 +11,7 @@
 
     <groupId>org.ihorzima</groupId>
     <artifactId>telegram_notification</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
     <name>telegram_notification</name>
     <description>telegram_notification</description>
     <url />
@@ -20,7 +20,7 @@
         <connection>scm:git:git://github.com/IhorZima/telegram_notification.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/IhorZima/telegram_notification.git</developerConnection>
         <url>https://github.com/IhorZima/telegram_notification</url>
-        <tag>HEAD</tag>
+        <tag>telegram_notification-1.0.1</tag>
     </scm>
 
 
