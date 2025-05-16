@@ -2,113 +2,162 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Обробка квитанцій</title>
+    <title>Злагода – Надсилання квитанцій</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
-            font-family: sans-serif;
-            background-color: #f0f8ff;
+            font-family: 'Rubik', sans-serif;
+            background-color: #e0f7ff;
             background-image: repeating-linear-gradient(
                     -45deg,
-                    rgba(0, 128, 255, 0.05) 0,
-                    rgba(0, 128, 255, 0.05) 100px,
-                    transparent 100px,
-                    transparent 200px
-            ),
-            repeating-linear-gradient(
-                    -45deg,
-                    transparent 0,
-                    transparent 100px,
-                    rgba(0, 128, 255, 0.05) 100px,
-                    rgba(0, 128, 255, 0.05) 200px
+                    rgba(0, 123, 255, 0.03) 0,
+                    rgba(0, 123, 255, 0.03) 150px,
+                    transparent 150px,
+                    transparent 300px
             );
         }
 
         .container {
-            text-align: center;
-            padding-top: 100px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
-        .send-button {
-            font-size: 24px;
-            padding: 20px 40px;
-            border-radius: 50px;
+        h1 {
+            color: #003366;
+            margin-bottom: 40px;
+        }
+
+        .button {
             background-color: #007bff;
             color: white;
             border: none;
+            padding: 20px 50px;
+            font-size: 22px;
+            border-radius: 50px;
             cursor: pointer;
-            margin: 20px;
-            transition: transform 0.5s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: background-color 0.3s;
         }
 
-        .send-button.loading {
-            animation: rotate 1s infinite linear;
+        .button:hover {
+            background-color: #0056b3;
         }
 
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 4px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
         }
 
-        .success {
-            margin-top: 30px;
-            font-size: 40px;
-            color: white;
-            background-color: #28a745;
-            padding: 20px;
-            border-radius: 20px;
-            display: inline-block;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .toast {
+            margin-top: 40px;
+            font-size: 36px;
+            display: none;
+            align-items: center;
+            gap: 20px;
+            color: #003366;
+        }
+
+        .toast span.icon {
+            font-size: 48px;
         }
 
         .watermark {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
             font-size: 48px;
-            color: rgba(0, 0, 255, 0.05);
-            transform: rotate(-45deg);
+            color: rgba(0, 0, 255, 0.03);
             white-space: nowrap;
-            pointer-events: none;
+            transform: rotate(-45deg);
             z-index: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            text-align: center;
+            overflow: hidden;
         }
 
-        .content {
-            position: relative;
-            z-index: 1;
+        .watermark span {
+            position: absolute;
+            top: 50%;
+            left: -100%;
+            width: 300%;
+            animation: scroll 15s linear infinite;
+        }
+
+        @keyframes scroll {
+            0% { left: -100%; }
+            100% { left: 0%; }
         }
     </style>
-    <script>
-        function processMeasurements() {
-            const btn = document.getElementById("sendBtn");
-            const resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = "";
-            btn.classList.add("loading");
-
-            fetch("/measurement")
-                .then(response => response.text())
-                .then(result => {
-                    btn.classList.remove("loading");
-                    if (result.includes("All measurements has been processed")) {
-                        resultDiv.innerHTML = "<div class='success'>👍 Успішно!</div>";
-                    } else {
-                        alert(result);
-                    }
-                })
-                .catch(error => {
-                    btn.classList.remove("loading");
-                    alert("Помилка: " + error);
-                });
-        }
-    </script>
 </head>
 <body>
-<div class="watermark">Злагода-Злагода Злагода-Злагода Злагода-Злагода Злагода-Злагода</div>
-<div class="container content">
-    <h1>Обробка квитанцій</h1>
-    <button id="sendBtn" class="send-button" onclick="processMeasurements()">Надіслати квитанції</button>
-    <div id="result"></div>
+<div class="watermark"><span>Злагода – Злагода – Злагода – Злагода – Злагода – Злагода – Злагода –</span></div>
+
+<div class="container">
+    <h1>Надсилання квитанцій</h1>
+    <button class="button" onclick="processMeasurements()" id="sendBtn">
+        <div class="spinner" id="spinner"></div>
+        <span id="btnText">Надіслати квитанції</span>
+    </button>
+    <div class="toast" id="toast">
+        <span class="icon" id="toastIcon"></span>
+        <span id="toastText"></span>
+    </div>
 </div>
+
+<script>
+    function processMeasurements() {
+        const btn = document.getElementById("sendBtn");
+        const text = document.getElementById("btnText");
+        const spinner = document.getElementById("spinner");
+        const toast = document.getElementById("toast");
+        const icon = document.getElementById("toastIcon");
+        const toastText = document.getElementById("toastText");
+
+        toast.style.display = "none";
+        text.textContent = "Надсилання...";
+        spinner.style.display = "inline-block";
+
+        fetch("/measurement")
+            .then(response => response.text())
+            .then(result => {
+                spinner.style.display = "none";
+                text.textContent = "Надіслати квитанції";
+
+                if (result.includes("All measurements has been processed")) {
+                    icon.innerHTML = "&#128077;";
+                    toastText.textContent = "Успішно!";
+                    toast.style.display = "flex";
+                } else {
+                    icon.innerHTML = "&#10060;";
+                    toastText.textContent = "Упс, щось пішло не за планом, дивись логі";
+                    toast.style.display = "flex";
+                }
+            })
+            .catch(() => {
+                spinner.style.display = "none";
+                text.textContent = "Надіслати квитанції";
+                icon.innerHTML = "&#10060;";
+                toastText.textContent = "Упс, щось пішло не за планом, дивись логи";
+                toast.style.display = "flex";
+            });
+    }
+</script>
 </body>
 </html>
