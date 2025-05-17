@@ -56,10 +56,10 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
 
     private void amountToBePaidParagraph(Measurement measurement, Font paragraphTitleFont, Document document, Font infoFont) {
         String formattedToBePaid = formatNumber(measurement.getToBePaid());
-        String currentDay = formatNumber(measurement.getCurrentDay());
-        String previousDay = formatNumber(measurement.getPreviousDay());
-        String currentNight = formatNumber(measurement.getCurrentNight());
-        String previousNight = formatNumber(measurement.getPreviousNight());
+        String currentDay = measurement.getCurrentDay();
+        String previousDay = measurement.getPreviousDay();
+        String currentNight = measurement.getCurrentNight();
+        String previousNight = measurement.getPreviousNight();
 
         Paragraph paragraph4 = new Paragraph("Сума до сплати становить: " + formattedToBePaid + " грн.", paragraphTitleFont);
         paragraph4.setSpacingBefore(10);
@@ -85,10 +85,6 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         paragraph3.setSpacingBefore(5);
         document.add(paragraph3);
 
-        String currentDay = formatNumber(measurement.getCurrentDay());
-        String previousDay = formatNumber(measurement.getPreviousDay());
-        String currentNight = formatNumber(measurement.getCurrentNight());
-        String previousNight = formatNumber(measurement.getPreviousNight());
         String toBePaid = formatNumber(measurement.getToBePaid());
 
         PdfPTable table3 = new PdfPTable(5);
@@ -101,10 +97,10 @@ public class MeasurementPdfFileBuilder implements PdfFileBuilder<Measurement> {
         addCell(table3, "Нічні попередні", infoFont);
         addCell(table3, "Разом до сплати (грн)", infoFont);
 
-        addCell(table3, currentDay, infoFont);
-        addCell(table3, previousDay, infoFont);
-        addCell(table3, currentNight, infoFont);
-        addCell(table3, previousNight, infoFont);
+        addCell(table3, measurement.getCurrentDay(), infoFont);
+        addCell(table3, measurement.getPreviousDay(), infoFont);
+        addCell(table3, measurement.getCurrentNight(), infoFont);
+        addCell(table3, measurement.getPreviousNight(), infoFont);
         addCell(table3, toBePaid, infoFont);
 
         document.add(table3);
