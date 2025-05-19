@@ -11,7 +11,7 @@
 
     <groupId>org.ihorzima</groupId>
     <artifactId>telegram_notification</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3-SNAPSHOT</version>
     <name>telegram_notification</name>
     <description>telegram_notification</description>
     <url />
